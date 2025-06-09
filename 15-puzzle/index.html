@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>15 Puzzle Game</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>🧩 15 Puzzle Challenge</h1>
+
+  <div class="status-bar">
+  <div class="stat-box">
+    ⏱ <label>Time</label>
+    <span id="timer">0</span> sec
+  </div>
+  <div class="stat-box">
+    🔄 <label>Moves</label>
+    <span id="moves">0</span>
+  </div>
+  <div class="stat-box">
+    🏆 <label>Best Time</label>
+    <span id="bestTime">--</span> sec
+  </div>
+  <div class="stat-box">
+    💪 <label>Best Moves</label>
+    <span id="bestMoves">--</span>
+  </div>
+</div>
+
+    <div id="puzzle"></div>
+
+    <div class="buttons">
+      <button onclick="shuffle()">🔀 Shuffle</button>
+      <button onclick="togglePause()" id="pauseBtn">⏸ Pause</button>
+    </div>
+
+    <div id="winMessage" class="hidden">
+      🎉 <strong>You Solved It!</strong><br/>
+      ⏱ <span id="finalTime"></span> sec | 🔄 <span id="finalMoves"></span> moves
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

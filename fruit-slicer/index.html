@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fruit Slice Game 🍎</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      background: linear-gradient(135deg, #FFDEE9, #B5FFFC);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      user-select: none;
+    }
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    .fruit {
+      position: absolute;
+      font-size: 60px;
+      width: 80px;
+      height: 80px;
+      text-align: center;
+      line-height: 80px;
+      border-radius: 50%;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      animation-timing-function: ease-out;
+      z-index: 1;
+    }
+    .bomb {
+      background-color: black;
+      color: white;
+      animation: blink 1s infinite, shake 0.5s infinite;
+    }
+    .special {
+      background-color: gold !important;
+      font-size: 64px;
+      animation: sparkle 1.5s infinite;
+    }
+ 
+
+    @keyframes sparkle {
+      0%, 100% { box-shadow: 0 0 10px 5px gold; }
+      50% { box-shadow: 0 0 20px 10px yellow; }
+    }
+    #scoreboard {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #222;
+      font-size: 24px;
+      font-weight: bold;
+      z-index: 2;
+    }
+    #message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 36px;
+      color: #333;
+      text-align: center;
+      display: none;
+      z-index: 3;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 20px;
+      border: none;
+      background-color: #28a745;
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #trail {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(255,255,255,0.6);
+      width: 40px;
+      height: 10px;
+      border-radius: 10px;
+      transform: rotate(45deg);
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="scoreboard">Score: 0 | Level: 1</div>
+    <div id="message"></div>
+    <div id="trail"></div>
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const scoreboard = document.getElementById("scoreboard");
+    const message = document.getElementById("message");
+    const trail = document.getElementById("trail");
+
+    const fruitEmojis = ["🍎", "🍉", "🍍", "🍌", "🍓", "🍊"];
+    const bombEmoji = "💣";
+    const specialEmoji = "🍇"; // Special fruit
+
+    let fruits = [];
+    let score = 0;
+    let level = 1;
+    let fruitsToCut = 8;
+    let slicedFruits = 0;
+    let isGameActive = true;
+
+    const getRandomColor = () => {
+      const colors = ["#FFB6C1", "#FF69B4", "#FFD700", "#ADFF2F", "#87CEFA", "#FF8C00"];
+      return colors[Math.floor(Math.random() * colors.length)];
+    };
+
+    function createFruit() {
+      if (!isGameActive) return;
+
+      const fruit = document.createElement("div");
+      fruit.classList.add("fruit");
+
+      const rand = Math.random();
+      let type = "normal";
+
+      if (rand < 0.20) {
+        // Bomb (25%)
+        type = "bomb";
+        fruit.textContent = bombEmoji;
+        fruit.classList.add("bomb");
+        fruit.setAttribute("data-type", "bomb");
+      } else if (rand < 0.25) {
+        // Special fruit (15%)
+        type = "special";
+        fruit.textContent = specialEmoji;
+        fruit.classList.add("special");
+        fruit.setAttribute("data-type", "special");
+      } else {
+        // Normal fruit
+        fruit.textContent = fruitEmojis[Math.floor(Math.random() * fruitEmojis.length)];
+        fruit.style.backgroundColor = getRandomColor();
+        fruit.setAttribute("data-type", "normal");
+      }
+
+      fruit.style.left = Math.random() * (window.innerWidth - 80) + "px";
+      fruit.style.top = window.innerHeight + "px";
+      game.appendChild(fruit);
+
+      const duration = 5000 + Math.random() * 2000;
+      const start = performance.now();
+      const peak = Math.random() * (window.innerHeight / 2) + 150;
+
+      function animateFruit(time) {
+        let elapsed = time - start;
+        if (elapsed > duration) {
+          fruit.remove();
+          fruits = fruits.filter(f => f !== fruit);
+          checkLevelEnd();
+          return;
+        }
+        const progress = elapsed / duration;
+        let y = window.innerHeight - peak * 4 * (progress * (1 - progress));
+        fruit.style.top = y + "px";
+        requestAnimationFrame(animateFruit);
+      }
+
+      requestAnimationFrame(animateFruit);
+      fruits.push(fruit);
+
+      if (fruits.length < fruitsToCut) {
+        setTimeout(createFruit, 800);
+      }
+    }
+
+    function sliceFruit(fruit) {
+      if (!isGameActive) return;
+
+      const type = fruit.getAttribute("data-type");
+
+      fruit.remove();
+      fruits = fruits.filter(f => f !== fruit);
+
+      if (type === "bomb") {
+        gameOver();
+        return;
+      }
+
+      if (type === "special") {
+        score += 3;
+      } else {
+        score += 1;
+        slicedFruits++;
+      }
+
+      scoreboard.textContent = `Score: ${score} | Level: ${level}`;
+      checkLevelEnd();
+    }
+
+    function checkLevelEnd() {
+      if (slicedFruits >= fruitsToCut) {
+        isGameActive = false;
+        message.innerHTML = `
+          <div>🎉 You Win Level ${level}!</div>
+          <button id="nextBtn">Next Level</button>
+        `;
+        message.style.display = "block";
+        document.getElementById("nextBtn").onclick = () => {
+          level++;
+          fruitsToCut += 4;
+          slicedFruits = 0;
+          message.style.display = "none";
+          isGameActive = true;
+          scoreboard.textContent = `Score: ${score} | Level: ${level}`;
+          createFruit();
+        };
+      }
+    }
+
+    function gameOver() {
+      isGameActive = false;
+      fruits.forEach(f => f.remove());
+      message.innerHTML = `
+        <div>💥 Game Over! You hit a bomb!</div>
+        <button id="restartBtn">Restart</button>
+      `;
+      message.style.display = "block";
+      document.getElementById("restartBtn").onclick = () => {
+        restartGame();
+      };
+    }
+
+    function restartGame() {
+      score = 0;
+      level = 1;
+      fruitsToCut = 8;
+      slicedFruits = 0;
+      fruits.forEach(f => f.remove());
+      fruits = [];
+      isGameActive = true;
+      scoreboard.textContent = `Score: ${score} | Level: ${level}`;
+      message.style.display = "none";
+      createFruit();
+    }
+
+    // Trail and slice detection
+    let lastPos = null;
+    function onMove(e) {
+      if (!isGameActive) return;
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+
+      trail.style.left = x - 20 + "px";
+      trail.style.top = y - 5 + "px";
+
+      if (lastPos) {
+        const dx = x - lastPos.x;
+        const dy = y - lastPos.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 10) {
+          fruits.forEach(fruit => {
+            const rect = fruit.getBoundingClientRect();
+            if (
+              x > rect.left && x < rect.right &&
+              y > rect.top && y < rect.bottom
+            ) {
+              sliceFruit(fruit);
+            }
+          });
+        }
+      }
+      lastPos = { x, y };
+    }
+
+    function onEnd() {
+      lastPos = null;
+      trail.style.left = "-100px";
+      trail.style.top = "-100px";
+    }
+
+    game.addEventListener("mousemove", onMove);
+    game.addEventListener("touchmove", onMove);
+    game.addEventListener("mouseup", onEnd);
+    game.addEventListener("touchend", onEnd);
+
+    function startGame() {
+      score = 0;
+      level = 1;
+      fruitsToCut = 8;
+      slicedFruits = 0;
+      isGameActive = true;
+      scoreboard.textContent = `Score: ${score} | Level: ${level}`;
+      createFruit();
+    }
+
+    startGame();
+  </script>
+</body>
+</html>

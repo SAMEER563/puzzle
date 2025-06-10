@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>6x6 Sudoku Drag & Drop Game - Responsive</title>
+<style>
+  /* Reset & base styles */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1 {
+    text-align: center;
+    margin: 15px 10px 5px;
+    font-weight: 700;
+    font-size: 2.2rem;
+    letter-spacing: 2px;
+    text-shadow: 0 0 5px #00ffd5;
+  }
+
+  #info-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    padding: 10px 15px;
+    font-size: 1.3rem;
+    letter-spacing: 1.5px;
+    user-select: none;
+  }
+  #timer {
+    font-weight: 700;
+    color: #00ffd5;
+  }
+  button {
+    cursor: pointer;
+    background: #00ffd5;
+    border: none;
+    color: #002222;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px #00ffd5bb;
+    transition: background-color 0.3s ease;
+    font-size: 1rem;
+    user-select: none;
+  }
+  button:hover, button:focus {
+    background: #00c4ab;
+    outline: none;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  #win-message {
+    font-size: 2rem;
+    margin: 10px auto 15px;
+    color: #00ff9d;
+    text-shadow: 0 0 12px #00ff9daa;
+    animation: glow 1.5s infinite alternate;
+    text-align: center;
+    user-select: none;
+  }
+
+  @keyframes glow {
+    0% { text-shadow: 0 0 5px #00ff9daa; }
+    100% { text-shadow: 0 0 20px #00ff9dff; }
+  }
+
+  #game-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 15px 20px;
+    flex-wrap: wrap;
+  }
+
+  /* Number palettes */
+  .number-palette {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 15px;
+    background: rgba(255,255,255,0.07);
+    padding: 10px 20px;
+    border-radius: 15px;
+    user-select: none;
+    box-shadow: 0 0 15px #00ffd5aa;
+    min-width: 70px;
+  }
+  .number-palette.right {
+    flex-direction: column-reverse;
+  }
+  .number {
+    background: linear-gradient(145deg, #00ffd5, #007a70);
+    font-size: 2.4rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: grab;
+    box-shadow:
+      0 4px 6px rgba(0,0,0,0.3),
+      0 0 12px #00ffd5aa;
+    transition: transform 0.3s ease;
+    touch-action: manipulation;
+  }
+  .number:active, .number.dragging {
+    cursor: grabbing;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px #00ffd5ff;
+  }
+  .number.selected {
+    box-shadow: 0 0 30px 5px #00ffcccc;
+    transform: scale(1.2);
+  }
+
+  /* Sudoku board */
+  #board {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(45px, 70px));
+    grid-template-rows: repeat(6, minmax(45px, 70px));
+    gap: 4px;
+    background: #022f2f;
+    padding: 10px;
+    border-radius: 20px;
+    box-shadow: 0 0 25px #00ffd5cc;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .cell {
+    background: #004f4f;
+    border-radius: 10px;
+    box-shadow:
+      inset 0 0 5px #008080cc,
+      0 0 10px #00ffd5aa;
+    font-size: 2rem;
+    color: #b0fef7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .cell.highlight {
+    background: #00ffd5cc;
+    color: #002222;
+    font-weight: 700;
+    box-shadow: 0 0 15px #00fffdbb;
+  }
+  .cell.fixed {
+    background: #002626;
+    color: #00ffd5;
+    cursor: default;
+    font-weight: 700;
+    user-select: none;
+    box-shadow: inset 0 0 8px #00ffd5cc;
+  }
+  .cell.conflict {
+    background: #ff4c4ccc !important;
+    color: #330000 !important;
+    font-weight: 900;
+    box-shadow: 0 0 10px #ff0000bb !important;
+  }
+
+  /* Block borders for Sudoku 2x3 blocks */
+  .cell.block-right-border {
+    border-right: 3px solid #00ffd5;
+  }
+  .cell.block-bottom-border {
+    border-bottom: 3px solid #00ffd5;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 720px) {
+    #game-container {
+      flex-direction: column;
+      gap: 15px;
+    }
+    .number-palette {
+      flex-direction: row !important;
+      gap: 10px;
+      padding: 10px;
+      min-width: auto;
+      overflow-x: auto;
+      border-radius: 12px;
+    }
+    .number-palette.right {
+      flex-direction: row !important;
+    }
+    #board {
+      grid-template-columns: repeat(6, minmax(40px, 50px));
+      grid-template-rows: repeat(6, minmax(40px, 50px));
+      padding: 8px;
+    }
+    .number {
+      width: 45px;
+      height: 45px;
+      font-size: 1.8rem;
+    }
+    .cell {
+      font-size: 1.5rem;
+    }
+  }
+
+  @media (max-width: 400px) {
+    #info-bar {
+      font-size: 1.1rem;
+      gap: 10px;
+    }
+    button {
+      padding: 6px 14px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>6x6 Sudoku Drag & Drop</h1>
+<div id="info-bar" role="region" aria-label="Game controls and timer">
+  Time: <span id="timer" aria-live="polite">00:00</span>
+  <button id="undo-btn" title="Undo last move" aria-label="Undo last move">Undo</button>
+  <button id="next-level-btn" title="Next Level" aria-label="Next level" style="display:none;">Next Level</button>
+</div>
+<div id="game-container" role="main" aria-label="Sudoku game area">
+  <div class="number-palette left" id="left-palette" aria-label="Numbers palette left"></div>
+  <div id="board" tabindex="0" aria-label="Sudoku board"></div>
+  <div class="number-palette right" id="right-palette" aria-label="Numbers palette right"></div>
+</div>
+<div id="win-message" style="display:none;" role="alert" aria-live="assertive">🎉 You Win! 🎉</div>
+<div id="confetti-container" aria-hidden="true"></div>
+
+<script>
+(() => {
+  const ROWS = 6, COLS = 6;
+
+  // Two sample puzzles with correct solutions (for demo)
+  const puzzles = [
+    {
+      puzzle: [
+        [0, 0, 5, 3, 0, 0],
+        [0, 0, 0, 0, 0, 4],
+        [4, 0, 0, 0, 2, 0],
+        [0, 5, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0],
+        [0, 2, 0, 6, 0, 0],
+      ],
+      solution: [
+        [1, 4, 5, 3, 6, 2],
+        [3, 6, 2, 1, 5, 4],
+        [4, 1, 6, 5, 2, 3],
+        [2, 5, 4, 6, 3, 1],
+        [6, 3, 1, 2, 4, 5],
+        [5, 2, 3, 6, 1, 4],
+      ]
+    },
+    {
+      puzzle: [
+        [0, 6, 0, 3, 0, 1],
+        [0, 0, 0, 0, 0, 6],
+        [1, 0, 0, 0, 5, 0],
+        [0, 4, 0, 0, 0, 0],
+        [0, 0, 3, 0, 0, 0],
+        [6, 0, 0, 1, 0, 0],
+      ],
+      solution: [
+        [5, 6, 2, 3, 4, 1],
+        [4, 1, 5, 2, 3, 6],
+        [1, 3, 6, 4, 5, 2],
+        [3, 4, 1, 6, 2, 5],
+        [2, 5, 3, 1, 6, 4],
+        [6, 2, 4, 1, 5, 3],
+      ]
+    }
+  ];
+
+  // Elements
+  const boardEl = document.getElementById('board');
+  const leftPaletteEl = document.getElementById('left-palette');
+  const rightPaletteEl = document.getElementById('right-palette');
+  const timerEl = document.getElementById('timer');
+  const undoBtn = document.getElementById('undo-btn');
+  const nextLevelBtn = document.getElementById('next-level-btn');
+  const winMessageEl = document.getElementById('win-message');
+  const confettiContainer = document.getElementById('confetti-container');
+
+  let currentLevel = 0;
+  let boardData = [];
+  let fixedCells = [];
+  let undoStack = [];
+  let timerInterval;
+  let startTime;
+  let draggingNumber = null;
+  let selectedNumber = null; // For tap-to-select on mobile
+  let isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  // Initialize
+  function init() {
+    resetGame();
+    createPalettes();
+    createBoard();
+    startTimer();
+    attachListeners();
+  }
+
+  function resetGame() {
+    clearInterval(timerInterval);
+    startTime = Date.now();
+    timerEl.textContent = "00:00";
+    undoStack = [];
+    boardData = [];
+    fixedCells = [];
+    draggingNumber = null;
+    selectedNumber = null;
+    winMessageEl.style.display = 'none';
+    nextLevelBtn.style.display = 'none';
+    undoBtn.disabled = true;
+
+    // Copy puzzle data
+    const puzzle = puzzles[currentLevel].puzzle;
+    for (let r = 0; r < ROWS; r++) {
+      boardData[r] = [];
+      fixedCells[r] = [];
+      for (let c = 0; c < COLS; c++) {
+        boardData[r][c] = puzzle[r][c];
+        fixedCells[r][c] = puzzle[r][c] !== 0;
+      }
+    }
+  }
+
+  // Timer display update
+  function startTimer() {
+    timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const secs = String(elapsed % 60).padStart(2, '0');
+      timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+  }
+
+  // Create number palettes on both sides
+  function createPalettes() {
+    leftPaletteEl.innerHTML = '';
+    rightPaletteEl.innerHTML = '';
+    for (let n = 1; n <= 6; n++) {
+      const numElLeft = createNumberElement(n);
+      const numElRight = createNumberElement(n);
+      leftPaletteEl.appendChild(numElLeft);
+      rightPaletteEl.appendChild(numElRight);
+    }
+  }
+
+  // Create one number element (draggable and selectable)
+  function createNumberElement(num) {
+    const div = document.createElement('div');
+    div.className = 'number';
+    div.textContent = num;
+    div.draggable = true;
+    div.setAttribute('aria-label', `Number ${num}`);
+    div.setAttribute('role', 'button');
+    div.tabIndex = 0;
+
+    // Drag events
+    div.addEventListener('dragstart', (e) => {
+      draggingNumber = num;
+      div.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', num);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    div.addEventListener('dragend', () => {
+      draggingNumber = null;
+      div.classList.remove('dragging');
+    });
+
+    // Tap-to-select for mobile
+    if (isMobile) {
+      div.addEventListener('click', () => {
+        clearSelectedNumber();
+        selectedNumber = num;
+        div.classList.add('selected');
+      });
+    }
+
+    return div;
+  }
+
+  // Create board cells
+  function createBoard() {
+    boardEl.innerHTML = '';
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+
+        // Add block borders for 2x3 blocks
+        if ((c + 1) % 2 === 0 && c !== COLS - 1) cell.classList.add('block-right-border');
+        if ((r + 1) % 3 === 0 && r !== ROWS - 1) cell.classList.add('block-bottom-border');
+
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+
+        // If cell is fixed, show number and add class
+        if (fixedCells[r][c]) {
+          cell.textContent = boardData[r][c];
+          cell.classList.add('fixed');
+          cell.setAttribute('aria-readonly', 'true');
+        } else {
+          cell.textContent = '';
+          cell.setAttribute('aria-readonly', 'false');
+          // Allow drop for drag & drop
+          cell.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            cell.classList.add('highlight');
+          });
+          cell.addEventListener('dragleave', () => {
+            cell.classList.remove('highlight');
+          });
+          cell.addEventListener('drop', (e) => {
+            e.preventDefault();
+            cell.classList.remove('highlight');
+            let numberDropped = draggingNumber;
+            if (!numberDropped) {
+              numberDropped = e.dataTransfer.getData('text/plain');
+              numberDropped = parseInt(numberDropped, 10);
+            }
+            if (numberDropped) {
+              placeNumber(parseInt(cell.dataset.row), parseInt(cell.dataset.col), numberDropped);
+            }
+          });
+
+          // Tap to place for mobile
+          if (isMobile) {
+            cell.addEventListener('click', () => {
+              if (selectedNumber !== null) {
+                placeNumber(parseInt(cell.dataset.row), parseInt(cell.dataset.col), selectedNumber);
+                clearSelectedNumber();
+              }
+            });
+          }
+        }
+
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  // Clear number selection on mobile palettes
+  function clearSelectedNumber() {
+    selectedNumber = null;
+    document.querySelectorAll('.number.selected').forEach(el => el.classList.remove('selected'));
+  }
+
+  // Place number on board and validate
+  function placeNumber(r, c, num) {
+    if (fixedCells[r][c]) return; // Can't change fixed cells
+
+    const prevNum = boardData[r][c];
+    if (prevNum === num) return; // No change
+
+    boardData[r][c] = num;
+    undoStack.push({ r, c, prevNum });
+    undoBtn.disabled = false;
+    updateBoardUI();
+    checkConflicts();
+    if (checkWin()) {
+      winGame();
+    }
+  }
+
+  // Update board UI to reflect boardData
+  function updateBoardUI() {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = boardEl.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        if (fixedCells[r][c]) continue;
+        const val = boardData[r][c];
+        cell.textContent = val === 0 ? '' : val;
+        cell.classList.remove('conflict');
+      }
+    }
+  }
+
+  // Check for conflicts in the board and highlight conflicting cells
+  function checkConflicts() {
+    // First clear all conflict classes
+    document.querySelectorAll('.cell.conflict').forEach(el => el.classList.remove('conflict'));
+
+    let conflictFound = false;
+
+    // Helper: collect all numbers in row, col, block with positions
+    function getPositions(value, row, col) {
+      let conflicts = [];
+
+      // Row
+      for (let c = 0; c < COLS; c++) {
+        if (c !== col && boardData[row][c] === value) {
+          conflicts.push({r: row, c});
+        }
+      }
+      // Col
+      for (let r = 0; r < ROWS; r++) {
+        if (r !== row && boardData[r][col] === value) {
+          conflicts.push({r, c: col});
+        }
+      }
+      // Block 2x3
+      const startRow = Math.floor(row / 3) * 3;
+      const startCol = Math.floor(col / 2) * 2;
+      for (let rr = startRow; rr < startRow + 3; rr++) {
+        for (let cc = startCol; cc < startCol + 2; cc++) {
+          if ((rr !== row || cc !== col) && boardData[rr][cc] === value) {
+            conflicts.push({r: rr, c: cc});
+          }
+        }
+      }
+      return conflicts;
+    }
+
+    // Scan all cells for conflicts
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const val = boardData[r][c];
+        if (val === 0) continue;
+        const conflicts = getPositions(val, r, c);
+        if (conflicts.length > 0) {
+          conflictFound = true;
+          // Highlight this cell and all conflicts
+          const cell = boardEl.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+          cell.classList.add('conflict');
+          conflicts.forEach(pos => {
+            const conflictCell = boardEl.querySelector(`.cell[data-row="${pos.r}"][data-col="${pos.c}"]`);
+            conflictCell.classList.add('conflict');
+          });
+        }
+      }
+    }
+    return !conflictFound;
+  }
+
+  // Check if the player has won (no empty cells and no conflicts)
+  function checkWin() {
+    // Check all cells filled
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (boardData[r][c] === 0) return false;
+      }
+    }
+    // Check no conflicts
+    return checkConflicts();
+  }
+
+  // Undo last move
+  function undoMove() {
+    if (undoStack.length === 0) return;
+    const last = undoStack.pop();
+    boardData[last.r][last.c] = last.prevNum;
+    updateBoardUI();
+    checkConflicts();
+    undoBtn.disabled = undoStack.length === 0;
+    winMessageEl.style.display = 'none';
+    nextLevelBtn.style.display = 'none';
+  }
+
+  // On winning
+  function winGame() {
+    winMessageEl.style.display = 'block';
+    nextLevelBtn.style.display = 'inline-block';
+    undoBtn.disabled = true;
+    clearInterval(timerInterval);
+    confetti();
+  }
+
+  // Next level
+  function nextLevel() {
+    currentLevel++;
+    if (currentLevel >= puzzles.length) currentLevel = 0;
+    resetGame();
+    createBoard();
+    undoBtn.disabled = true;
+    startTimer();
+  }
+
+  // Confetti effect (simple)
+  function confetti() {
+    // Simple confetti animation for 3 seconds
+    const colors = ['#00ffd5', '#00ff9d', '#009f8e', '#00d0b5'];
+    const duration = 3000;
+    const numPieces = 150;
+    let container = confettiContainer;
+    container.innerHTML = '';
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.width = '100vw';
+    container.style.height = '100vh';
+    container.style.pointerEvents = 'none';
+    container.style.zIndex = '9999';
+
+    for (let i = 0; i < numPieces; i++) {
+      let conf = document.createElement('div');
+      conf.style.position = 'absolute';
+      conf.style.width = '8px';
+      conf.style.height = '8px';
+      conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      conf.style.top = Math.random() * window.innerHeight + 'px';
+      conf.style.left = Math.random() * window.innerWidth + 'px';
+      conf.style.opacity = 0.8;
+      conf.style.borderRadius = '50%';
+      conf.style.pointerEvents = 'none';
+      conf.style.animation = `confetti-fall ${1 + Math.random() * 2}s linear forwards`;
+      conf.style.animationDelay = (Math.random() * duration / 1000) + 's';
+      container.appendChild(conf);
+    }
+    setTimeout(() => {
+      container.innerHTML = '';
+    }, duration);
+  }
+
+  // Attach event listeners
+  function attachListeners() {
+    undoBtn.addEventListener('click', undoMove);
+    nextLevelBtn.addEventListener('click', nextLevel);
+
+    // Keyboard support for palettes
+    document.querySelectorAll('.number').forEach(numEl => {
+      numEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          numEl.click();
+        }
+      });
+    });
+  }
+
+  // Initialize the game
+  init();
+})();
+</script>
+
+<style>
+  /* Confetti keyframes */
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(0) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(120vh) rotate(360deg);
+      opacity: 0;
+    }
+  }
+</style>
+
+</body>
+</html>
